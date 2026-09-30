@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>媒体播放行为实验室 · Autoplay / 权限 / 画中画 / Media Session</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <div>
+        <h1>媒体播放行为实验室</h1>
+        <p class="subtitle">自动播放策略 · 媒体权限 · 静音策略 · 画中画 · 媒体会话 —— 全部行为可检测、可解释、可降级</p>
+      </div>
+      <div class="env-badges">
+        <span id="badgeSecure" class="badge">检测中…</span>
+        <span id="badgeActivation" class="badge">未交互</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- 自动播放检测 -->
+    <section class="card" id="autoplayCard">
+      <h2>1. 自动播放策略检测</h2>
+      <p class="hint">用一个离屏探针媒体实际调用 <code>play()</code>，按返回结果与错误类型判定原因。页面刚加载时通常没有用户手势；点击页面任意位置后可再测一次对比。</p>
+      <div class="row">
+        <button class="btn" data-action="probe-audible">探测有声自动播放</button>
+        <button class="btn" data-action="probe-muted">探测静音自动播放</button>
+        <button class="btn btn-ghost" data-action="probe-both">两种都测</button>
+      </div>
+      <div id="autoplayResult" class="result-box">尚未探测。</div>
+    </section>
+
+    <!-- 播放器 -->
+    <section class="card" id="playerCard">
+      <h2>2. 加载并播放音视频</h2>
+      <div class="row wrap">
+        <label class="btn btn-ghost file-label">
+          选择本地文件
+          <input type="file" id="fileInput" accept="audio/*,video/*" hidden />
+        </label>
+        <input type="url" id="urlInput" class="text-input" placeholder="或输入媒体 URL（https://…）" />
+        <button class="btn" data-action="load-url">加载 URL</button>
+        <button class="btn btn-ghost" data-action="load-sample-audio">内置音频样本</button>
+        <button class="btn btn-ghost" data-action="load-sample-video">在线视频样本</button>
+      </div>
+
+      <div class="media-stage">
+        <video id="videoEl" playsinline controls preload="metadata"></video>
+        <div id="audioArt" class="audio-art" hidden>
+          <div class="audio-disc">♪</div>
+          <p>音频模式（无画面）</p>
+        </div>
+      </div>
+
+      <div id="fallbackBar" class="fallback-bar" hidden>
+        <strong id="fallbackTitle">自动播放被阻止</strong>
+        <span id="fallbackReason" class="muted"></span>
+        <button class="btn btn-primary" data-action="manual-play">▶ 手动播放</button>
+        <button class="btn btn-ghost" data-action="muted-play">尝试静音播放</button>
+      </div>
+
+      <div class="controls-grid">
+        <button class="btn" data-action="play">播放</button>
+        <button class="btn" data-action="pause">暂停</button>
+        <label class="chk"><input type="checkbox" id="muteToggle" /> 静音</label>
+        <label class="volume">音量 <input type="range" id="volumeRange" min="0" max="1" step="0.05" value="1" /></label>
+      </div>
+
+      <div class="status-grid">
+        <div class="status-item"><span class="status-label">播放状态</span><span id="stPlayState" class="status-pill">-</span></div>
+        <div class="status-item"><span class="status-label">静音状态</span><span id="stMuted" class="status-pill">-</span></div>
+        <div class="status-item"><span class="status-label">音量</span><span id="stVolume" class="status-pill">-</span></div>
+        <div class="status-item"><span class="status-label">媒体类型</span><span id="stKind" class="status-pill">未加载</span></div>
+        <div class="status-item"><span class="status-label">时长/进度</span><span id="stTime" class="status-pill">-</span></div>
+        <div class="status-item"><span class="status-label">来源</span><span id="stSource" class="status-pill text-clip">-</span></div>
+      </div>
+    </section>
+
+    <!-- 权限 -->
+    <section class="card" id="permCard">
+      <h2>3. 媒体权限（Permissions / getUserMedia）</h2>
+      <p class="hint">Permissions API 在非安全上下文（如 <code>file://</code>、明文 HTTP）下通常整体不可用，此时走“非安全上下文”降级：只能在用户点击时直接申请，并解释错误。</p>
+      <div class="row">
+        <button class="btn" data-action="perm-query-all">查询全部权限状态</button>
+      </div>
+      <div id="permList" class="perm-list"></div>
+    </section>
+
+    <!-- 画中画 -->
+    <section class="card" id="pipCard">
+      <h2>4. 画中画 Picture-in-Picture</h2>
+      <p class="hint">仅视频元素可用；浏览器不支持、非视频媒体、策略禁止或调用失败时，自动降级为页面内迷你悬浮窗，播放不受影响。</p>
+      <div class="row">
+        <button class="btn" data-action="pip-enter">进入画中画</button>
+        <button class="btn btn-ghost" data-action="pip-exit">退出画中画</button>
+      </div>
+      <div id="pipResult" class="result-box">尚未操作。</div>
+    </section>
+
+    <!-- Media Session -->
+    <section class="card" id="sessionCard">
+      <h2>5. 媒体会话 Media Session</h2>
+      <p class="hint">用于锁屏 / 媒体键 / 耳机线控。浏览器不支持时降级为页面内键盘快捷键（空格暂停/播放、←/→ 快退快进、↑/↓ 音量）。</p>
+      <div class="row">
+        <button class="btn" data-action="ms-init">注册媒体会话</button>
+        <button class="btn btn-ghost" data-action="ms-clear">清除处理器</button>
+      </div>
+      <div class="status-item inline">
+        <span class="status-label">支持的动作</span>
+        <div id="msActions" class="chips"><span class="chip">未检测</span></div>
+      </div>
+      <div id="msResult" class="result-box">尚未操作。</div>
+    </section>
+
+    <!-- 日志 -->
+    <section class="card" id="logCard">
+      <h2>6. 行为日志（IndexedDB 持久化）</h2>
+      <div class="row">
+        <button class="btn btn-ghost" data-action="logs-refresh">刷新</button>
+        <button class="btn btn-ghost" data-action="logs-clear">清空日志</button>
+        <span id="dbState" class="muted"></span>
+      </div>
+      <ul id="logList" class="log-list"></ul>
+    </section>
+  </main>
+
+  <footer class="site-footer wrap">
+    <p>安全上下文建议：<code>python3 -m http.server 8080</code> 后访问 <code>http://localhost:8080</code>；用 <code>file://</code> 直接打开可观察非安全上下文降级路径。</p>
+  </footer>
+
+  <script src="js/utils.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/logger.js"></script>
+  <script src="js/samples.js"></script>
+  <script src="js/autoplay.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/pip.js"></script>
+  <script src="js/media-session.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
