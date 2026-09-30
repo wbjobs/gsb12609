@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>媒体播放策略实验室 · 自动播放 / 权限 / 画中画 / 媒体会话</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>媒体播放策略实验室</h1>
+    <p class="subtitle">
+      加载音视频并尝试自动播放，实时解释 <strong>自动播放是否被阻止以及原因</strong>；
+      申请媒体权限、画中画、媒体会话；不支持或被拒时自动降级为手动播放。
+    </p>
+  </header>
+
+  <main class="layout">
+
+    <!-- 1. 运行环境 -->
+    <section class="card span-2" id="envCard">
+      <h2>① 运行环境与用户激活状态</h2>
+      <div class="feature-grid" id="envGrid">
+        <div class="feat" data-feat="secure"><span class="feat-label">安全上下文 (secure context)</span><span class="feat-state" data-state>检测中…</span></div>
+        <div class="feat" data-feat="protocol"><span class="feat-label">协议</span><span class="feat-state" data-state>-</span></div>
+        <div class="feat" data-feat="sticky"><span class="feat-label">sticky activation（本会话曾交互）</span><span class="feat-state" data-state>检测中…</span></div>
+        <div class="feat" data-feat="transient"><span class="feat-label">transient activation（当前瞬时激活）</span><span class="feat-state" data-state>检测中…</span></div>
+        <div class="feat" data-feat="autoplay"><span class="feat-label">navigator.userActivation</span><span class="feat-state" data-state>检测中…</span></div>
+        <div class="feat" data-feat="hint"><span class="feat-label">环境提示</span><span class="feat-state" data-state>-</span></div>
+      </div>
+    </section>
+
+    <!-- 2. 加载音视频 -->
+    <section class="card" id="sourceCard">
+      <h2>② 加载音视频</h2>
+      <form id="sourceForm" class="source-form">
+        <label for="sourceSelect">选择内置媒体源</label>
+        <select id="sourceSelect"></select>
+
+        <label for="customUrl">或填写媒体 URL（留空则用上面的源）</label>
+        <input id="customUrl" type="url" placeholder="https://example.com/a.mp4" />
+
+        <label for="fileInput">或选择本地文件</label>
+        <input id="fileInput" type="file" accept="audio/*,video/*" />
+
+        <button type="submit" id="loadBtn" class="primary">加载并尝试自动播放</button>
+      </form>
+    </section>
+
+    <!-- 3. 自动播放诊断 -->
+    <section class="card" id="diagCard">
+      <h2>③ 自动播放诊断（可解释）</h2>
+      <ol class="steps" id="diagSteps" aria-label="诊断步骤"></ol>
+      <div id="diagVerdict" class="verdict hidden" role="status"></div>
+      <button id="retryBtn" class="secondary hidden">重新尝试自动播放</button>
+    </section>
+
+    <!-- 4. 播放器 -->
+    <section class="card span-2" id="playerCard">
+      <h2>④ 播放器与状态</h2>
+      <div id="mediaStage" class="media-stage">
+        <p class="placeholder">尚未加载媒体。</p>
+      </div>
+
+      <div class="control-row" id="controlRow" hidden>
+        <button id="playBtn" type="button">手动播放</button>
+        <button id="muteBtn" type="button">静音</button>
+        <label class="volume">音量 <input id="volume" type="range" min="0" max="1" step="0.05" value="1" /></label>
+      </div>
+
+      <div class="state-chips" id="stateChips">
+        <span class="chip" id="chipPlayback">播放状态：未加载</span>
+        <span class="chip" id="chipMuted">静音：未加载</span>
+        <span class="chip" id="chipReady">readyState：-</span>
+        <span class="chip" id="chipNetwork">networkState：-</span>
+      </div>
+
+      <div id="mediaError" class="error-box hidden"></div>
+    </section>
+
+    <!-- 5. 媒体权限 -->
+    <section class="card" id="permCard">
+      <h2>⑤ 媒体权限（麦克风 / 摄像头）</h2>
+      <div class="perm-list" id="permList"></div>
+      <p class="note" id="permNote"></p>
+    </section>
+
+    <!-- 6. 画中画 -->
+    <section class="card" id="pipCard">
+      <h2>⑥ 画中画 Picture-in-Picture</h2>
+      <div class="feature-grid">
+        <div class="feat" data-feat="pip"><span class="feat-label">document.pictureInPictureEnabled</span><span class="feat-state" data-state>检测中…</span></div>
+      </div>
+      <div class="control-row">
+        <button id="pipBtn" type="button" disabled>进入画中画</button>
+        <button id="pipFallbackBtn" type="button">打开页内降级小窗</button>
+      </div>
+      <div id="pipMsg" class="note"></div>
+
+      <div id="miniFallback" class="mini hidden">
+        <div class="mini-head">
+          <span>页内小窗（画中画降级）</span>
+          <button id="miniCloseBtn" type="button" class="link-btn">关闭</button>
+        </div>
+        <div id="miniBody" class="mini-body"></div>
+      </div>
+    </section>
+
+    <!-- 7. 媒体会话 -->
+    <section class="card" id="sessionCard">
+      <h2>⑦ 媒体会话 Media Session</h2>
+      <div class="feature-grid">
+        <div class="feat" data-feat="ms"><span class="feat-label">navigator.mediaSession 是否存在</span><span class="feat-state" data-state>检测中…</span></div>
+        <div class="feat" data-feat="msactions"><span class="feat-label">setActionHandler 支持</span><span class="feat-state" data-state>检测中…</span></div>
+      </div>
+      <div class="control-row">
+        <button id="msBtn" type="button" disabled>注册媒体会话</button>
+      </div>
+      <div id="msMsg" class="note"></div>
+    </section>
+
+    <!-- 8. 事件日志 / IndexedDB -->
+    <section class="card span-2" id="logCard">
+      <h2>⑧ 事件与诊断日志（持久化到 IndexedDB）</h2>
+      <div class="control-row">
+        <select id="logLevelFilter">
+          <option value="all">全部级别</option>
+          <option value="info">info</option>
+          <option value="ok">ok</option>
+          <option value="warn">warn</option>
+          <option value="error">error</option>
+          <option value="block">block</option>
+        </select>
+        <button id="clearLogsBtn" type="button" class="secondary">清空日志与记录</button>
+        <span id="dbState" class="note">IndexedDB：初始化中…</span>
+      </div>
+      <ul id="logList" class="log-list"></ul>
+    </section>
+
+  </main>
+
+  <footer class="page-footer">
+    纯原生实现：HTMLMediaElement · Autoplay Policy · Permissions API · MediaDevices · Picture-in-Picture API · Media Session API · DOM · IndexedDB
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
